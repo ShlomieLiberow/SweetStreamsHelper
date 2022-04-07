@@ -63,10 +63,10 @@ func main() {
 				continue
 			}
 
-			fileExtension := path.Ext(val)
-			fileWithStrippedExtention := strings.TrimRight(val, fileExtension)
+			URLExtension := path.Ext(val)
+			URLWithStrippedExtention := strings.TrimRight(val, URLExtension)
 
-			if !uuidCheck(fileWithStrippedExtention) && !sha256Check(fileWithStrippedExtention) && !stringMatch(fileWithStrippedExtention) {
+			if !uuidCheck(URLWithStrippedExtention) && !sha256Check(URLWithStrippedExtention) && !blacklistStringMatch(URLWithStrippedExtention) && !blacklistExtentionMatch(URLExtension) {
 				fmt.Println(u)
 			}
 
@@ -82,9 +82,21 @@ func main() {
 	}
 }
 
-func stringMatch(fileWithStrippedExtention string) bool {
+func blacklistExtentionMatch(URLExtension string) bool {
 
-	blacklist := []string{"assets/frontend", "assets/static", "assets/vendor"}
+	blacklist := []string{"jpeg", "png", "svg", "jpg", "gif", "woff", "ttf"}
+
+	for _, entry := range blacklist {
+		if strings.Contains(URLExtension, entry) {
+			return true
+		}
+	}
+	return false
+}
+
+func blacklistStringMatch(fileWithStrippedExtention string) bool {
+
+	blacklist := []string{"assets/frontend", "assets/static", "assets/vendor", "/fonts/"}
 
 	for _, entry := range blacklist {
 		if strings.Contains(fileWithStrippedExtention, entry) {
@@ -139,7 +151,7 @@ func parseURL(raw string) (*url.URL, error) {
 	}
 
 	if u.Scheme == "" {
-		return url.Parse("http://" + raw)
+		return url.Parse(raw)
 	}
 
 	return u, nil
