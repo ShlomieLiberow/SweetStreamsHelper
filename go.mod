@@ -1,4 +1,4 @@
-module URLCleaner
+module github.com/ShlomieLiberow/URLCleaner
 
 go 1.17
 
