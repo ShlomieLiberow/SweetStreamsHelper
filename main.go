@@ -9,6 +9,7 @@ import (
 	"fmt"
 	parser "github.com/Cgboal/DomainParser"
 	uuid "github.com/satori/go.uuid"
+	"net/http"
 	"net/url"
 	"os"
 	"path"
@@ -24,20 +25,19 @@ func init() {
 
 func main() {
 
-	var unique bool
-	flag.BoolVar(&unique, "u", true, "")
-
-	var verbose bool
+	var verbose, clean, unique, wayback bool
+	flag.BoolVar(&unique, "unique", true, "")
+	flag.BoolVar(&clean, "cleanurl", false, "")
+	flag.BoolVar(&wayback, "waybackfetcher", true, "")
 	flag.BoolVar(&verbose, "v", false, "")
-	flag.BoolVar(&verbose, "verbose", false, "")
 
 	flag.Parse()
 
-	fmtStr := flag.Arg(1)
-
-	sc := bufio.NewScanner(os.Stdin)
+	//fmtStr := flag.Arg(1)
 
 	seen := make(map[string]bool)
+
+	sc := bufio.NewScanner(os.Stdin)
 
 	for sc.Scan() {
 		u, err := parseURL(sc.Text())
@@ -47,44 +47,71 @@ func main() {
 			}
 			continue
 		}
-
-		// some urlProc functions return multiple things,
-		// so it's just easier to always get a slice and
-		// loop over it instead of having two kinds of
-		// urlProc functions.
-		for _, val := range paths(u, fmtStr) {
-
-			// you do see empty values sometimes
-			if val == "" {
-				continue
-			}
-
-			if seen[val] && unique {
-				continue
-			}
-
-			URLExtension := path.Ext(val)
-			URLWithStrippedExtention := strings.TrimRight(val, URLExtension)
-
-			if !uuidCheck(URLWithStrippedExtention) && !sha256Check(URLWithStrippedExtention) && !blacklistStringMatch(URLWithStrippedExtention) && !blacklistExtentionMatch(URLExtension) {
-				fmt.Println(u)
-			}
-
-			// no point using up memory if we're outputting dupes
-			if unique {
-				seen[val] = true
-			}
+		if clean {
+			endpointClean(u, unique, seen)
+		} else if wayback {
+			alive(u, unique, seen)
 		}
 	}
 
 	if err := sc.Err(); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to read input: %s\n", err)
 	}
+
+}
+
+// some urlProc functions return multiple things,
+// so it's just easier to always get a slice and
+// loop over it instead of having two kinds of
+// urlProc functions.
+func endpointClean(u *url.URL, unique bool, seen map[string]bool) {
+
+	for _, val := range format(u, "%p") {
+
+		// you do see empty values sometimes
+		if val == "" {
+			continue
+		}
+
+		if seen[val] && unique {
+			continue
+		}
+
+		URLExtension := path.Ext(val)
+		URLWithStrippedExtention := strings.TrimRight(val, URLExtension)
+
+		if !uuidCheck(URLWithStrippedExtention) && !sha256Check(URLWithStrippedExtention) && !blacklistStringMatch(URLWithStrippedExtention) && !blacklistExtentionMatch(URLExtension) {
+			fmt.Println(u)
+		}
+
+		// no point using up memory if we're outputting dupes
+		if unique {
+			seen[val] = true
+		}
+	}
+}
+
+func alive(u *url.URL, unique bool, seen map[string]bool) {
+
+	for _, val := range format(u, "%p") {
+
+		if seen[val] && unique {
+			continue
+		}
+
+		resp, err := http.Get(u.String())
+		if err != nil {
+			continue
+		}
+		if resp.StatusCode < 200 || resp.StatusCode > 299 {
+			fmt.Print("https://web.archive.org/web/20060102150405if_/", u)
+		}
+	}
 }
 
 func blacklistExtentionMatch(URLExtension string) bool {
 
-	blacklist := []string{"jpeg", "png", "svg", "jpg", "gif", "woff", "ttf"}
+	blacklist := []string{"jpeg", "png", "svg", "jpg", "gif", "woff", "ttf", "scss"}
 
 	for _, entry := range blacklist {
 		if strings.Contains(URLExtension, entry) {
@@ -155,13 +182,6 @@ func parseURL(raw string) (*url.URL, error) {
 	}
 
 	return u, nil
-}
-
-// paths returns the path portion of the URL. e.g.
-// for http://sub.example.com/path it will return
-// []string{"/path"}
-func paths(u *url.URL, f string) []string {
-	return format(u, "%p")
 }
 
 // format is a little bit like a special sprintf for

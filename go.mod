@@ -1,4 +1,4 @@
-module github.com/ShlomieLiberow/urlcleaner
+module github.com/ShlomieLiberow/SweetStreamsHelper
 
 go 1.17
 
