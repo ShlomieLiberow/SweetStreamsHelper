@@ -27,11 +27,22 @@ func main() {
 
 	var verbose, clean, unique, wayback bool
 	flag.BoolVar(&unique, "unique", true, "")
-	flag.BoolVar(&clean, "cleanurl", false, "")
-	flag.BoolVar(&wayback, "waybackfetcher", true, "")
+	flag.BoolVar(&clean, "clean", false, "")
+	flag.BoolVar(&wayback, "wbfetcher", false, "")
 	flag.BoolVar(&verbose, "v", false, "")
-
 	flag.Parse()
+
+	if !clean && !wayback {
+		fmt.Fprintf(os.Stderr, "no mode selected")
+		return
+	}
+
+	// Check for stdin input
+	stat, _ := os.Stdin.Stat()
+	if (stat.Mode() & os.ModeCharDevice) != 0 {
+		fmt.Fprintln(os.Stderr, "No input detected")
+		//os.Exit(1)
+	}
 
 	//fmtStr := flag.Arg(1)
 
@@ -50,7 +61,7 @@ func main() {
 		if clean {
 			endpointClean(u, unique, seen)
 		} else if wayback {
-			alive(u, unique, seen)
+			waybackForDeadEndpoints(u, unique, seen)
 		}
 	}
 
@@ -66,32 +77,51 @@ func main() {
 // urlProc functions.
 func endpointClean(u *url.URL, unique bool, seen map[string]bool) {
 
-	for _, val := range format(u, "%p") {
+	for _, pathStr := range format(u, "%p") {
 
 		// you do see empty values sometimes
-		if val == "" {
+		if pathStr == "" {
 			continue
 		}
 
-		if seen[val] && unique {
+		URLExtension := path.Ext(pathStr)
+		URLWithStrippedExtention := strings.TrimRight(pathStr, URLExtension)
+
+		if seen[pathStr] && unique {
 			continue
 		}
-
-		URLExtension := path.Ext(val)
-		URLWithStrippedExtention := strings.TrimRight(val, URLExtension)
 
 		if !uuidCheck(URLWithStrippedExtention) && !sha256Check(URLWithStrippedExtention) && !blacklistStringMatch(URLWithStrippedExtention) && !blacklistExtentionMatch(URLExtension) {
-			fmt.Println(u)
+			fmt.Println(regexClean(u.String()), "")
 		}
 
 		// no point using up memory if we're outputting dupes
 		if unique {
-			seen[val] = true
+			seen[pathStr] = true
 		}
 	}
 }
 
-func alive(u *url.URL, unique bool, seen map[string]bool) {
+func regexClean(stringToClean string) string {
+
+	listOfPatterns := []string{`\?v=.*?$`, `#.*?$`} // removeVersions = `\?v=.*?$` removehashes = `#.*?$`
+
+	for _, listOfPatterns := range listOfPatterns {
+		var myPointer *string = &stringToClean
+
+		regExp, err := regexp.Compile(listOfPatterns)
+		if err != nil {
+			return ""
+		}
+
+		*myPointer = regExp.ReplaceAllString(stringToClean, "")
+	}
+
+	return stringToClean
+
+}
+
+func waybackForDeadEndpoints(u *url.URL, unique bool, seen map[string]bool) {
 
 	for _, val := range format(u, "%p") {
 
@@ -99,19 +129,20 @@ func alive(u *url.URL, unique bool, seen map[string]bool) {
 			continue
 		}
 
-		resp, err := http.Get(u.String())
+		resp, err := http.Head(u.String())
 		if err != nil {
 			continue
 		}
 		if resp.StatusCode < 200 || resp.StatusCode > 299 {
-			fmt.Print("https://web.archive.org/web/20060102150405if_/", u)
+			fmt.Print("https://web.archive.org/web/20060102150405if_/", u, "\n")
+			//TODO pipe into nuclei?
 		}
 	}
 }
 
 func blacklistExtentionMatch(URLExtension string) bool {
 
-	blacklist := []string{"jpeg", "png", "svg", "jpg", "gif", "woff", "ttf", "scss"}
+	blacklist := []string{"jpeg", "png", "svg", "jpg", "ico", "swf", "gif", "woff", "ttf", "scss", "css"}
 
 	for _, entry := range blacklist {
 		if strings.Contains(URLExtension, entry) {
