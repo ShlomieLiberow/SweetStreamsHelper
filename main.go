@@ -41,7 +41,7 @@ func main() {
 	stat, _ := os.Stdin.Stat()
 	if (stat.Mode() & os.ModeCharDevice) != 0 {
 		fmt.Fprintln(os.Stderr, "No input detected")
-		//os.Exit(1)
+		os.Exit(1)
 	}
 
 	//fmtStr := flag.Arg(1)
@@ -84,12 +84,12 @@ func endpointClean(u *url.URL, unique bool, seen map[string]bool) {
 			continue
 		}
 
-		URLExtension := path.Ext(pathStr)
-		URLWithStrippedExtention := strings.TrimRight(pathStr, URLExtension)
-
 		if seen[pathStr] && unique {
 			continue
 		}
+
+		URLExtension := path.Ext(pathStr)
+		URLWithStrippedExtention := strings.TrimRight(pathStr, URLExtension)
 
 		if !uuidCheck(URLWithStrippedExtention) && !sha256Check(URLWithStrippedExtention) && !blacklistStringMatch(URLWithStrippedExtention) && !blacklistExtentionMatch(URLExtension) {
 			fmt.Println(regexClean(u.String()), "")
