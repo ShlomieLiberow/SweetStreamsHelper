@@ -44,8 +44,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	//fmtStr := flag.Arg(1)
-
 	seen := make(map[string]bool)
 
 	sc := bufio.NewScanner(os.Stdin)
@@ -92,10 +90,9 @@ func endpointClean(u *url.URL, unique bool, seen map[string]bool) {
 		URLWithStrippedExtention := strings.TrimRight(pathStr, URLExtension)
 
 		if !uuidCheck(URLWithStrippedExtention) && !sha256Check(URLWithStrippedExtention) && !blacklistStringMatch(URLWithStrippedExtention) && !blacklistExtentionMatch(URLExtension) {
-			fmt.Println(regexClean(u.String()), "")
+			fmt.Println(regexClean(u.String()))
 		}
 
-		// no point using up memory if we're outputting dupes
 		if unique {
 			seen[pathStr] = true
 		}
@@ -142,7 +139,7 @@ func waybackForDeadEndpoints(u *url.URL, unique bool, seen map[string]bool) {
 
 func blacklistExtentionMatch(URLExtension string) bool {
 
-	blacklist := []string{"jpeg", "png", "svg", "jpg", "ico", "swf", "gif", "woff", "ttf", "scss", "css"}
+	blacklist := []string{"jpeg", "png", "svg", "jpg", "ico", "swf", "gif", "woff", "ttf", "scss", "css", ".eot"}
 
 	for _, entry := range blacklist {
 		if strings.Contains(URLExtension, entry) {
@@ -154,7 +151,7 @@ func blacklistExtentionMatch(URLExtension string) bool {
 
 func blacklistStringMatch(fileWithStrippedExtention string) bool {
 
-	blacklist := []string{"assets/frontend", "assets/static", "assets/vendor", "/fonts/"}
+	blacklist := []string{"assets/frontend", "assets/static", "assets/vendor", "/fonts/", "article/", "/blog/"}
 
 	for _, entry := range blacklist {
 		if strings.Contains(fileWithStrippedExtention, entry) {
