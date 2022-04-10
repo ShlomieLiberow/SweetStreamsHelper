@@ -41,7 +41,7 @@ func main() {
 	stat, _ := os.Stdin.Stat()
 	if (stat.Mode() & os.ModeCharDevice) != 0 {
 		fmt.Fprintln(os.Stderr, "No input detected")
-		os.Exit(1)
+		//os.Exit(1)
 	}
 
 	seen := make(map[string]bool)
@@ -89,9 +89,18 @@ func endpointClean(u *url.URL, unique bool, seen map[string]bool) {
 		URLExtension := path.Ext(pathStr)
 		URLWithStrippedExtention := strings.TrimRight(pathStr, URLExtension)
 
-		if !uuidCheck(URLWithStrippedExtention) && !sha256Check(URLWithStrippedExtention) && !blacklistStringMatch(URLWithStrippedExtention) && !blacklistExtentionMatch(URLExtension) {
-			fmt.Println(regexClean(u.String()))
+		bar := uuidCheck(URLWithStrippedExtention)
+		_ = bar
+		bar2 := sha256Check(URLWithStrippedExtention)
+		_ = bar2
+		bar3 := blacklistStringMatch(URLWithStrippedExtention)
+		_ = bar3
+		bar4 := blacklistExtentionMatch(URLWithStrippedExtention)
+		_ = bar4
+		if uuidCheck(URLWithStrippedExtention) || sha256Check(URLWithStrippedExtention) || blacklistStringMatch(URLWithStrippedExtention) || blacklistExtentionMatch(URLExtension) {
+			continue
 		}
+		fmt.Println(regexClean(u.String()))
 
 		if unique {
 			seen[pathStr] = true
@@ -143,6 +152,7 @@ func blacklistExtentionMatch(URLExtension string) bool {
 
 	for _, entry := range blacklist {
 		if strings.Contains(URLExtension, entry) {
+			fmt.Println("dddd")
 			return true
 		}
 	}
@@ -155,6 +165,7 @@ func blacklistStringMatch(fileWithStrippedExtention string) bool {
 
 	for _, entry := range blacklist {
 		if strings.Contains(fileWithStrippedExtention, entry) {
+			fmt.Println("rrrr")
 			return true
 		}
 	}
@@ -166,10 +177,8 @@ func uuidCheck(fileWithStrippedExtention string) bool {
 	splitDir := strings.Split(fileWithStrippedExtention, "/")
 
 	for _, dir := range splitDir {
-		if len(dir) == 32 || len(dir) > 32 && len(dir) <= 60 && strings.Contains(dir, "-") {
-			strip32Chars := fileWithStrippedExtention[len(fileWithStrippedExtention)-32:] //get last 32 chars to check is matches UUID format
-
-			_, err := uuid.FromString(strip32Chars)
+		if len(dir) == 32 || len(dir) == 36 { //d80c0a07-a503-4c97-b996-1441d827dab5 or d80c0a07a5034c97b9961441d827dab5 TODO Bother with blbl-d80c0a07a5034c97b9961441d827dab5?
+			_, err := uuid.FromString(dir)
 			if err == nil {
 				return true
 			}
@@ -183,13 +192,8 @@ func sha256Check(fileWithStrippedExtention string) bool {
 	splitDir := strings.Split(fileWithStrippedExtention, "/")
 
 	for _, dir := range splitDir {
-		if len(dir) == 64 || len(dir) > 64 && strings.Contains(dir, "-") { //to filter example "constants-d28d254616822d54333b734a499081711780f22399c690af74070cf80d2007b4"
-			strip32Chars := fileWithStrippedExtention[len(fileWithStrippedExtention)-32:] //get last 32 chars to check is matches UUID format
-
-			_, err := uuid.FromString(strip32Chars)
-			if err == nil {
-				return true
-			}
+		if len(dir) == 64 || len(dir) > 64 && dir[len(dir)-65:len(dir)-64] == "-" { //to filter example "constants-d28d254616822d54333b734a499081711780f22399c690af74070cf80d2007b4"
+			return true
 		}
 	}
 	return false
@@ -239,84 +243,84 @@ func format(u *url.URL, f string) []string {
 		case '%':
 			out.WriteRune('%')
 
-		// the scheme; e.g. http
+			// the scheme; e.g. http
 		case 's':
 			out.WriteString(u.Scheme)
 
-		// the userinfo; e.g. user:pass
+			// the userinfo; e.g. user:pass
 		case 'u':
 			if u.User != nil {
 				out.WriteString(u.User.String())
 			}
 
-		// the domain; e.g. sub.example.com
+			// the domain; e.g. sub.example.com
 		case 'd':
 			out.WriteString(u.Hostname())
 
-		// the port; e.g. 8080
+			// the port; e.g. 8080
 		case 'P':
 			out.WriteString(u.Port())
 
-		// the subdomain; e.g. www
+			// the subdomain; e.g. www
 		case 'S':
 			out.WriteString(extractFromDomain(u, "subdomain"))
 
-		// the root; e.g. example
+			// the root; e.g. example
 		case 'r':
 			out.WriteString(extractFromDomain(u, "root"))
 
-		// the tld; e.g. com
+			// the tld; e.g. com
 		case 't':
 			out.WriteString(extractFromDomain(u, "tld"))
 
-		// the path; e.g. /users
+			// the path; e.g. /users
 		case 'p':
 			out.WriteString(u.EscapedPath())
 
-		// the paths's file extension
+			// the paths's file extension
 		case 'e':
 			parts := strings.Split(u.EscapedPath(), ".")
 			if len(parts) > 1 {
 				out.WriteString(parts[len(parts)-1])
 			}
 
-		// the query string; e.g. one=1&two=2
+			// the query string; e.g. one=1&two=2
 		case 'q':
 			out.WriteString(u.RawQuery)
 
-		// the fragment / hash value; e.g. section-1
+			// the fragment / hash value; e.g. section-1
 		case 'f':
 			out.WriteString(u.Fragment)
 
-		// an @ if user info is specified
+			// an @ if user info is specified
 		case '@':
 			if u.User != nil {
 				out.WriteRune('@')
 			}
 
-		// a colon if a port is specified
+			// a colon if a port is specified
 		case ':':
 			if u.Port() != "" {
 				out.WriteRune(':')
 			}
 
-		// a question mark if there's a query string
+			// a question mark if there's a query string
 		case '?':
 			if u.RawQuery != "" {
 				out.WriteRune('?')
 			}
 
-		// a hash if there is a fragment
+			// a hash if there is a fragment
 		case '#':
 			if u.Fragment != "" {
 				out.WriteRune('#')
 			}
 
-		// the authority; e.g. user:pass@example.com:8080
+			// the authority; e.g. user:pass@example.com:8080
 		case 'a':
 			out.WriteString(format(u, "%u%@%d%:%P")[0])
 
-		// default to literal
+			// default to literal
 		default:
 			// output untouched
 			out.WriteRune('%')
