@@ -89,7 +89,7 @@ func endpointClean(u *url.URL, unique bool, seen map[string]bool) {
 		URLExtension := path.Ext(pathStr)
 		URLWithStrippedExtention := strings.TrimRight(pathStr, URLExtension)
 
-		if uuidCheck(URLWithStrippedExtention) || sha256Check(URLWithStrippedExtention) || blacklistStringMatch(URLWithStrippedExtention) || blacklistExtentionMatch(URLExtension) {
+		if isUUID(URLWithStrippedExtention) || isSHA256(URLWithStrippedExtention) || blacklistStringMatch(URLWithStrippedExtention) || blacklistExtentionMatch(URLExtension) {
 			continue
 		}
 		fmt.Println(regexClean(u.String()))
@@ -164,7 +164,7 @@ func blacklistStringMatch(fileWithStrippedExtention string) bool {
 	return false
 }
 
-func uuidCheck(fileWithStrippedExtention string) bool {
+func isUUID(fileWithStrippedExtention string) bool {
 
 	splitDir := strings.Split(fileWithStrippedExtention, "/")
 
@@ -179,7 +179,7 @@ func uuidCheck(fileWithStrippedExtention string) bool {
 	return false
 }
 
-func sha256Check(fileWithStrippedExtention string) bool {
+func isSHA256(fileWithStrippedExtention string) bool {
 
 	splitDir := strings.Split(fileWithStrippedExtention, "/")
 
