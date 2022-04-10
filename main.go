@@ -89,14 +89,6 @@ func endpointClean(u *url.URL, unique bool, seen map[string]bool) {
 		URLExtension := path.Ext(pathStr)
 		URLWithStrippedExtention := strings.TrimRight(pathStr, URLExtension)
 
-		bar := uuidCheck(URLWithStrippedExtention)
-		_ = bar
-		bar2 := sha256Check(URLWithStrippedExtention)
-		_ = bar2
-		bar3 := blacklistStringMatch(URLWithStrippedExtention)
-		_ = bar3
-		bar4 := blacklistExtentionMatch(URLWithStrippedExtention)
-		_ = bar4
 		if uuidCheck(URLWithStrippedExtention) || sha256Check(URLWithStrippedExtention) || blacklistStringMatch(URLWithStrippedExtention) || blacklistExtentionMatch(URLExtension) {
 			continue
 		}
@@ -113,7 +105,7 @@ func regexClean(stringToClean string) string {
 	listOfPatterns := []string{`\?v=.*?$`, `#.*?$`} // removeVersions = `\?v=.*?$` removehashes = `#.*?$`
 
 	for _, listOfPatterns := range listOfPatterns {
-		var myPointer *string = &stringToClean
+		var myPointer = &stringToClean
 
 		regExp, err := regexp.Compile(listOfPatterns)
 		if err != nil {
