@@ -14,6 +14,7 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -82,7 +83,9 @@ func endpointClean(u *url.URL, unique bool, seen map[string]bool) {
 			continue
 		}
 
-		if seen[pathStr] && unique {
+		paramKey := strings.Join(keys(u), "&")
+
+		if seen[pathStr+paramKey] && unique {
 			continue
 		}
 
@@ -95,7 +98,7 @@ func endpointClean(u *url.URL, unique bool, seen map[string]bool) {
 		fmt.Println(regexClean(u.String()))
 
 		if unique {
-			seen[pathStr] = true
+			seen[pathStr+paramKey] = true
 		}
 	}
 }
@@ -206,6 +209,18 @@ func parseURL(raw string) (*url.URL, error) {
 	}
 
 	return u, nil
+}
+
+// keys returns all of the keys used in the query string
+// portion of the URL. E.g. for /?one=1&two=2&three=3 it
+// will return []string{"one", "two", "three"}
+func keys(u *url.URL) []string {
+	out := make([]string, 0)
+	for key := range u.Query() {
+		out = append(out, key)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // format is a little bit like a special sprintf for
